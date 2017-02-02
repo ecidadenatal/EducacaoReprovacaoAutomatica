@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <plugin name="EducacaoReprovacaoAutomatica" label="Educação Reprovação Automática" plugin-version="1.0" ecidade-version="2.3.50" id-modulo="1100747">
+
+    <files>
+
+      <!-- classe -->
+      <file name="db_diarioresultadoreprovado_classe.php"    path="/classes/db_diarioresultadoreprovado_classe.php" />
+      <file name="db_formaavaliacaominimorecuperacao_classe.php"    path="/classes/db_formaavaliacaominimorecuperacao_classe.php" />
+      <file name="db_procresultadominimorecuperacao_classe.php"    path="/classes/db_procresultadominimorecuperacao_classe.php" />
+      
+      <!-- dd -->
+      <file name="plugins.diarioresultadoreprovado.dd.xml"    path="/dd/tabelas/plugins.diarioresultadoreprovado.dd.xml" />
+      <file name="plugins.formaavaliacaominimorecuperacao.dd.xml"    path="/dd/tabelas/plugins.formaavaliacaominimorecuperacao.dd.xml" />
+      <file name="plugins.procresultadominimorecuperacao.dd.xml"    path="/dd/tabelas/plugins.procresultadominimorecuperacao.dd.xml" />
+    
+      <!-- outro -->
+      <file name="EducacaoReprovacaoAutomatica.xml"    path="/modification/xml/EducacaoReprovacaoAutomatica.xml" />
+    
+    </files>
+
+    <estrutura install="/instalacao.sql" uninstall="/desinstalacao.sql">
+    </estrutura>
+  </plugin>
+</manifest>

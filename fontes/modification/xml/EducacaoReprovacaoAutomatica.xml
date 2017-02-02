@@ -1,0 +1,536 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<modification>
+  <id>EducacaoReprovacaoAutomatica</id>
+  <name>Educação Reprovação Automática</name>
+  <ecidade-version>2.3.50</ecidade-version>
+
+  <file path='edu4_lancamentoavaliacaonota.RPC.php'>
+    <operation>
+      <search regex="true"><![CDATA[(\$oDadosAvaliacao.*lMinimoAtingido.*true\;\s*\})]]></search>
+      <add>
+        <![CDATA[$1
+
+          /**
+            * Verifica se o aluno teve alguma reprovação por não atingir a nota mínima para bloquear o campo da nota da recuperação
+            */
+          $oDaoDiarioResultadoReprovado = db_utils::getDao('diarioresultadoreprovado');
+          $rsDiarioResultadoReprovado   = $oDaoDiarioResultadoReprovado->getResultadoReprovacaoPorAluno($oDadosAluno->iCodigoAluno);
+          $aDiarioResultadoReprovado    = db_utils::getCollectionByRecord($rsDiarioResultadoReprovado);
+          
+          if(count($aDiarioResultadoReprovado) > 0) {
+            $oDadosAvaliacao->lReprovadoDireto = true;
+          }]]>
+      </add>
+    </operation>
+  </file> 
+
+  <file path='forms/db_frmformaavaliacao.php'>
+    <operation>
+      <search regex="true"><![CDATA[(js_observeMascara.*minimoAprovacao.*;)]]></search>
+      <add>
+        <![CDATA[$1
+    js_observeMascaraNota($('minimorecuperacao'), oRetorno.minimoRecuperacao );]]>
+      </add>
+    </operation>
+
+    <operation>
+      <search regex="true"><![CDATA[(js_controla_tecla.*\s*.*\/td\>\s*.*\/tr\>)]]></search>
+      <add>
+        <![CDATA[$1
+     <tr>
+      <td>
+       <label for="minimorecuperacao"><b>Mínimo para Recuperação:</b></label>
+      </td>
+      <td>
+       <input title="Mínimo para Recuperação Campo:minimorecuperacao " name="minimorecuperacao"
+              type="text" id="minimorecuperacao" value="<?=$minimorecuperacao?>" size="10" maxlength="10"
+              onKeyDown="return js_controla_tecla_enter(this,event);" <?=$db_opcao==3?"disabled bgcolor='#DEB887'":""?>>
+      </td>
+     </tr>]]>
+      </add>
+    </operation>
+
+  </file> 
+
+  <file path='forms/db_frmprocresultado.php'>
+    <operation>
+      <search regex="true"><![CDATA[(\<select.*ed43_c_minimoaprov.*\>)]]></search>
+      <add>
+        <![CDATA[<select id='ed43_c_minimoaprov' name='ed43_c_minimoaprov' <?=$disable?> <?=$db_opcao == 3 ? "disabled" : ""?> >]]>
+      </add>
+    </operation>    
+
+    <operation>
+      <search regex="true"><![CDATA[(\$selected.*isset.*ed43_c_minimoaprov.*;)]]></search>
+      <add>
+        <![CDATA[]]>
+      </add>
+    </operation>
+
+    <operation>
+      <search regex="true"><![CDATA[(\<\/select.*\s*.*php\s*\n*.*\?\>\s*\n*.*\/td.*\s*\n*.*\/tr\>)]]></search>
+      <add>
+        <![CDATA[$1
+            <?php
+
+          
+              $minimorecuperacaoforma = 0;
+              $minimorecuperacaoproc  = 0;
+
+              $oDaoFormaAvaliacaoRecuperacao = db_utils::getDao("formaavaliacaominimorecuperacao");
+              $sSqlFormaAvaliacaoRecuperacao = $oDaoFormaAvaliacaoRecuperacao->sql_query(null, null, null, "formaavaliacao = {$ed43_i_formaavaliacao}");
+              $rsFormaAvaliacaoRecuperacao   = $oDaoFormaAvaliacaoRecuperacao->sql_record($sSqlFormaAvaliacaoRecuperacao);
+              if ($oDaoFormaAvaliacaoRecuperacao->numrows > 0) {
+                $minimorecuperacaoforma        = empty(db_utils::fieldsMemory($rsFormaAvaliacaoRecuperacao, 0)->minimorecuperacao) ? "0.0" : db_utils::fieldsMemory($rsFormaAvaliacaoRecuperacao, 0)->minimorecuperacao;
+              }
+
+              $oDaoProcResultadoRecuperacao = db_utils::getDao("procresultadominimorecuperacao");
+              $sSqlProcResultadoRecuperacao = $oDaoProcResultadoRecuperacao->sql_query(null, null, null, "procresultado = {$ed43_i_codigo}");
+              $rsProcResultadoRecuperacao   = $oDaoProcResultadoRecuperacao->sql_record($sSqlProcResultadoRecuperacao);
+              if ($oDaoProcResultadoRecuperacao->numrows > 0) { 
+                $minimorecuperacaoproc        = empty(db_utils::fieldsMemory($rsProcResultadoRecuperacao, 0)->minimorecuperacao) ? "0.0" : db_utils::fieldsMemory($rsProcResultadoRecuperacao, 0)->minimorecuperacao;
+              }
+            ?>
+            <tr>
+              <td nowrap >
+                <label class="bold">Utiliza mínimo para recuperação?</label>
+              </td>
+              <td>
+                <input type="radio"
+                        id="usaminimo"
+                        name="usaminimo"
+                        value="sim"
+                        <?= $minimorecuperacaoproc != 0 ? "checked" : "" ?>
+                        onclick="js_usaminimo(this.value)"
+                        <?=$db_opcao == 3 ? "disabled" : ""?>>
+                        <label>Sim</label>
+                <input type="radio"
+                        id="usaminimo"
+                        name="usaminimo"
+                        value="nao"
+                        <?= $minimorecuperacaoproc != 0 ? "" : "checked" ?>
+                        onclick="js_usaminimo(this.value)"
+                        <?=$db_opcao == 3 ? "disabled" : ""?>>
+                        <label>Não</label>
+              </td>
+            </tr>
+            <tr>
+              <td nowrap >
+                <label class="bold">Mínimo p/ Recuperação:</label>
+              </td>
+              <td>
+              <?php if($minimorecuperacaoproc != 0 && trim($minimorecuperacaoproc) != trim($minimorecuperacaoforma)) { 
+                $disable = "";
+                ?>
+                  <input type="radio"
+                         id="minimorecuperacao"
+                         name="minimorecuperacao"
+                         value="definido"
+                         onclick="js_minimorecuperacao(this.value)"
+                         <?=$db_opcao == 3 ? "disabled" : ""?>>
+                         <label><?=$minimorecuperacaoforma?></label>
+                  <input type="radio"
+                         id="minimorecuperacao"
+                         name="minimorecuperacao"
+                         value="escolher"
+                         checked
+                         onclick="js_minimorecuperacao(this.value)"
+                         <?=$db_opcao == 3 ? "disabled" : ""?>>
+                         <label>Definir</label>
+              <?php } else { 
+                $disable = "disabled";
+                ?>
+                  <input type="radio"
+                         id="minimorecuperacao"
+                         name="minimorecuperacao"
+                         value="definido"
+                         onclick="js_minimorecuperacao(this.value)"
+                         checked
+                         <?=$db_opcao == 3 ? "disabled" : ""?>>
+                         <label><?=$minimorecuperacaoforma?></label>
+                  <input type="radio"
+                         id="minimorecuperacao"
+                         name="minimorecuperacao"
+                         value="escolher"
+                         onclick="js_minimorecuperacao(this.value)"
+                         <?=$db_opcao == 3 ? "disabled" : ""?>>
+                         <label>Definir</label>
+              <?php } ?>
+                  <select id='minimorecuperacaoproc' name='minimorecuperacaoproc' <?=$disable?> <?=$db_opcao == 3 ? "disabled" : ""?> >
+                    <?php
+                    for( $z = $ed37_i_menorvalor; $z <= $ed37_i_maiorvalor; $z = $z + $ed37_i_variacao ) {
+                      echo "<option value='$z' $selected>{$z}</option>";
+                    }
+                    ?>
+                  </select>
+              </td>
+            </tr>]]>
+      </add>
+    </operation>
+
+    <operation>
+      <search regex="true"><![CDATA[(\<td.*colspan.*2.*\>)]]></search>
+      <add>
+        <![CDATA[$1
+                <?php
+                if (isset($minimorecuperacaoforma)) {  
+                ?>
+                <input name="minimorecuperacaoforma" type="hidden" value="<?=$minimorecuperacaoforma?>">
+                <?php
+                }
+                ?>]]>
+      </add>
+    </operation>
+
+    <operation>
+      <search regex="true"><![CDATA[(\<script\>)]]></search>
+      <add>
+        <![CDATA[$1
+
+window.onload = function() { 
+  js_escolheMinimoAprovacao(<?=$ed43_c_minimoaprov?>); 
+  js_escolheMinimoRecuperacao(<?=$minimorecuperacaoproc?>); 
+  js_usaminimo(<?=$minimorecuperacaoproc == 0 ? "'nao'" : "'sim'" ?>);
+};
+
+function js_minimorecuperacao(valor) {
+
+  if (valor == "definido") {
+    document.form1.minimorecuperacaoproc.disabled = true;
+  } else if(valor == "escolher") {
+    document.form1.minimorecuperacaoproc.disabled = false;
+  }
+}
+
+function js_usaminimo(valor) {
+
+  if (valor == "nao") {
+    var radios = document.form1.minimorecuperacao;
+    for (var i=0, iLen=radios.length; i<iLen; i++) {
+      radios[i].disabled = true;
+    }
+    document.getElementById('minimorecuperacaoproc').disabled = true;
+  } else if(valor == "sim") {
+    var radios = document.form1.minimorecuperacao;
+    for (var i=0, iLen=radios.length; i<iLen; i++) {
+      radios[i].disabled = false;
+    }
+    document.getElementById('minimorecuperacao').disabled     = false;
+    document.getElementById('minimorecuperacaoproc').disabled = false;
+  }
+}
+
+function js_escolheMinimoRecuperacao(Minimo) {
+  if(Minimo != "") {
+    document.getElementById('minimorecuperacaoproc').value=Minimo;
+  }
+}
+
+function js_escolheMinimoAprovacao(Minimo) {
+  if(Minimo != "") {
+    document.getElementById('ed43_c_minimoaprov').value=Minimo;
+  }
+}]]>
+      </add>
+    </operation>
+
+  </file> 
+
+  <file path='edu1_formaavaliacao001.php'>
+    <operation>
+      <search regex="true"><![CDATA[(\$oDaoConceito.*cl_conceito.*;)]]></search>
+      <add>
+        <![CDATA[$1
+$oDaoFormaAvaliacaoRecuperacao = db_utils::getDao("formaavaliacaominimorecuperacao");]]>
+      </add>
+    </operation>
+
+    <operation>
+      <search regex="true"><![CDATA[(\$oDaoFormaAvaliacao.*incluir.*ed37_i_codigo.*;)]]></search>
+      <add>
+        <![CDATA[$1
+  
+  //Se a forma for do tipo "nota", cria o registro da nota mínima para recuperação
+  if ($ed37_c_tipo == "NOTA") {
+    $oDaoFormaAvaliacaoRecuperacao->formaavaliacao  = $oDaoFormaAvaliacao->ed37_i_codigo;
+    if ($minimorecuperacao == "") {
+      $oDaoFormaAvaliacaoRecuperacao->minimorecuperacao = "0";
+    } else {
+      $oDaoFormaAvaliacaoRecuperacao->minimorecuperacao = str_replace(", ", ".", $minimorecuperacao);
+    }    
+    $oDaoFormaAvaliacaoRecuperacao->incluir(null);
+  }]]>
+      </add>
+    </operation>
+
+  </file>
+
+  <file path='edu1_formaavaliacao002.php'>
+    <operation>
+      <search regex="true"><![CDATA[(\$oDaoConceito.*cl_conceito.*;)]]></search>
+      <add>
+        <![CDATA[$1
+$oDaoFormaAvaliacaoRecuperacao = db_utils::getDao("formaavaliacaominimorecuperacao");]]>
+      </add>
+    </operation>
+
+    <operation>
+      <search regex="true"><![CDATA[(\$oDaoFormaAvaliacao.*ed37_c_minimoaprovnota.*;)]]></search>
+      <add>
+        <![CDATA[$1
+  
+    $sSqlFormaAvaliacaoRecuperacao = $oDaoFormaAvaliacaoRecuperacao->sql_query(null, null, null, "formaavaliacao = {$ed37_i_codigo}");
+    $rsFormaAvaliacaoRecuperacao   = $oDaoFormaAvaliacaoRecuperacao->sql_record($sSqlFormaAvaliacaoRecuperacao);
+    $iFormaMinimoRecuperacao       = db_utils::fieldsMemory($rsFormaAvaliacaoRecuperacao, 0)->sequencial;
+
+    $oDaoFormaAvaliacaoRecuperacao->formaavaliacao    = $ed37_i_codigo;
+    $oDaoFormaAvaliacaoRecuperacao->minimorecuperacao = str_replace(", ", ".", $minimorecuperacao);
+    
+    if($oDaoFormaAvaliacaoRecuperacao->numrows > 0) {
+      $oDaoFormaAvaliacaoRecuperacao->alterar($iFormaMinimoRecuperacao);
+    } else {
+      $oDaoFormaAvaliacaoRecuperacao->incluir(null);
+    }]]>
+      </add>
+    </operation>
+
+    <operation>
+      <search regex="true"><![CDATA[(\$ed37_c_minimoaprovnota.*ed37_c_minimoaprov.*\;)]]></search>
+      <add>
+        <![CDATA[$1
+
+  $sSqlFormaAvaliacaoRecuperacao = $oDaoFormaAvaliacaoRecuperacao->sql_query(null, null, null, "formaavaliacao = {$ed37_i_codigo}");
+  $rsFormaAvaliacaoRecuperacao   = $oDaoFormaAvaliacaoRecuperacao->sql_record($sSqlFormaAvaliacaoRecuperacao);
+  $minimorecuperacao             = db_utils::fieldsMemory($rsFormaAvaliacaoRecuperacao, 0)->minimorecuperacao;]]>
+      </add>
+    </operation>
+  </file> 
+
+  <file path='edu1_formaavaliacao003.php'>
+    <operation>
+      <search regex="true"><![CDATA[(\$oDaoConceito.*cl_conceito.*;)]]></search>
+      <add>
+        <![CDATA[$1
+$oDaoFormaAvaliacaoRecuperacao = db_utils::getDao("formaavaliacaominimorecuperacao");]]>
+      </add>
+    </operation>
+
+    <operation>
+      <search regex="true"><![CDATA[(\$oDaoFormaAvaliacao.*excluir.*ed37_i_codigo.*;)]]></search>
+      <add>
+        <![CDATA[$1
+    $oDaoFormaAvaliacaoRecuperacao->excluir(null, " formaavaliacao = {$ed37_i_codigo}");]]>
+      </add>
+    </operation>
+
+    <operation>
+      <search regex="true"><![CDATA[(\$ed37_c_minimoaprovnota.*ed37_c_minimoaprov.*\;)]]></search>
+      <add>
+        <![CDATA[$1
+
+  $sSqlFormaAvaliacaoRecuperacao = $oDaoFormaAvaliacaoRecuperacao->sql_query(null, null, null, "formaavaliacao = {$ed37_i_codigo}");
+  $rsFormaAvaliacaoRecuperacao   = $oDaoFormaAvaliacaoRecuperacao->sql_record($sSqlFormaAvaliacaoRecuperacao);
+  $minimorecuperacao             = db_utils::fieldsMemory($rsFormaAvaliacaoRecuperacao, 0)->minimorecuperacao;]]>
+      </add>
+    </operation>
+  </file>
+
+  <file path='func_formaavaliacao.php'>
+    <operation>
+      <search regex="true"><![CDATA[(formaavaliacao.*minimoaprov)]]></search>
+      <add>
+        <![CDATA[formaavaliacao.ed37_c_minimoaprov,
+             replace(cast((select coalesce(minimorecuperacao, 0) 
+              from plugins.formaavaliacaominimorecuperacao 
+              where formaavaliacao = formaavaliacao.ed37_i_codigo) as text), ',', '.') as dl_Mínimo_Recuperação]]>
+      </add>
+    </operation>
+  </file>
+
+  <file path='edu1_procresultado002.php'>
+    <operation>
+      <search regex="true"><![CDATA[(\$oDaoEdu.*cl_edu_parametros.*;)]]></search>
+      <add>
+        <![CDATA[$1
+$oDaoProcResultadoRecuperacao = db_utils::getDao("procresultadominimorecuperacao");]]>
+      </add>
+    </operation>
+
+    <operation>
+      <search regex="true"><![CDATA[(\$ed43.*minimoaprov.*"NOTA".*sMinimoAprovacao;\s*.*\})]]></search>
+      <add>
+        <![CDATA[$1
+
+    //Valida se é média anual para poder definir mínimo para recuperação
+    if (isset($usaminimo) && $usaminimo == "sim") {
+
+      if ( isset($minimorecuperacao) && $minimorecuperacao == "definido") {
+        $minimorecuperacao = $minimorecuperacaoforma;
+      } else {
+        $sMinimoRecuperacao = isset($minimorecuperacaoproc) ? $minimorecuperacaoproc : 0;
+        $minimorecuperacao  = $forma == "NOTA" ? number_format( $sMinimoRecuperacao, 2, ".", ".") : $sMinimoRecuperacao;
+      }
+
+      $sSqlProcResultadoRecuperacao = $oDaoProcResultadoRecuperacao->sql_query(null, null, null, "procresultado = {$ed43_i_codigo}");
+      $rsProcResultadoRecuperacao   = $oDaoProcResultadoRecuperacao->sql_record($sSqlProcResultadoRecuperacao);
+      $iProcMinimoRecuperacao       = db_utils::fieldsMemory($rsProcResultadoRecuperacao, 0)->sequencial;
+
+      $oDaoProcResultadoRecuperacao->procresultado     = $ed43_i_codigo;
+      $oDaoProcResultadoRecuperacao->minimorecuperacao = str_replace(", ", ".", $minimorecuperacao);
+      if($oDaoProcResultadoRecuperacao->numrows > 0) {
+        $oDaoProcResultadoRecuperacao->alterar($iProcMinimoRecuperacao);
+      } else {
+        $oDaoProcResultadoRecuperacao->incluir(null);
+      }
+    } else if (isset($usaminimo) && $usaminimo == "nao") {
+
+      $sSqlProcResultadoRecuperacao = $oDaoProcResultadoRecuperacao->sql_query(null, null, null, "procresultado = {$ed43_i_codigo}");
+      $rsProcResultadoRecuperacao   = $oDaoProcResultadoRecuperacao->sql_record($sSqlProcResultadoRecuperacao);
+      $iProcMinimoRecuperacao       = db_utils::fieldsMemory($rsProcResultadoRecuperacao, 0)->sequencial;
+
+      if ($oDaoProcResultadoRecuperacao->numrows > 0) {
+        $oDaoProcResultadoRecuperacao->excluir($iProcMinimoRecuperacao);
+      }
+    }
+]]>
+      </add>
+    </operation>
+  </file> 
+
+  <file path='edu4_configuracaonota.RPC.php'>
+    <operation>
+      <search regex="true"><![CDATA[(\$oRetorno.*minimoAprovacao.*DB_anousu.*;)]]></search>
+      <add>
+        <![CDATA[$1
+      $oRetorno->minimoRecuperacao = $sClasse::getMascara(db_getsession("DB_anousu"));]]>
+      </add>
+    </operation>
+  </file>
+
+  <file path='scripts/classes/DBViewLancamentoAvaliacaoTurma.classe.js'>
+    <operation>
+      <search regex="true"><![CDATA[(if.*\(oAproveitamento.lMinimoAtingido.*\|\|.*lBloqueada.*\{)]]></search>
+      <add>
+        <![CDATA[if (oAproveitamento.lMinimoAtingido || oAproveitamento.lReprovadoDireto || lBloqueada) {]]>
+      </add>
+    </operation>
+  </file>
+
+  <file path='model/educacao/avaliacao/AprovacaoConselho.model.php'>
+    <operation>
+      <search regex="true"><![CDATA[(if.*iFormaAprovacao.*RECLASSIFICACAO_BAIXA_FREQUENCIA.*\{)]]></search>
+      <add>
+        <![CDATA[	$oDaoDiarioResultadoReprovado = db_utils::getDao('diarioresultadoreprovado');
+	$rsDiarioResultadoReprovado   = $oDaoDiarioResultadoReprovado->sql_record($oDaoDiarioResultadoReprovado->sql_query(null, null, null, "diarioresultado in (select ed73_i_codigo from diarioresultado where ed73_i_diario = {$this->oAvaliacaoResultadoFinal->getCodigoDiario()})"));
+	if($oDaoDiarioResultadoReprovado->numrows > 0) {
+		$oDaoDiarioResultadoReprovado->excluir(null, "diarioresultado in (select ed73_i_codigo from diarioresultado where ed73_i_diario = {$this->oAvaliacaoResultadoFinal->getCodigoDiario()})");
+		if ($oDaoDiarioResultadoReprovado->erro_status == "0") {
+			throw new DBException("Erro: {$oDaoDiarioResultadoReprovado->erro_msg}");		
+		}
+	}
+	$1]]>
+      </add>
+    </operation>
+  </file>
+
+  <file path='model/educacao/avaliacao/DiarioAvaliacaoDisciplina.model.php'>
+    <operation>
+      <search regex="true"><![CDATA[(\/\*\*\s*.*Excluimos.*a.*informacao.*da.*recuperacao)]]></search>
+      <add>
+        <![CDATA[    /**
+     * Pegamos o valor mínimo para poder estar em recuperação, caso tenha configurado para o procedimento de avaliação utilizado na turma
+     */
+    $oDaoAprovacaoConselho        = db_utils::getDao("aprovconselho");
+    $rsAprovacaoConselho          = $oDaoAprovacaoConselho->sql_record($oDaoAprovacaoConselho->sql_query(null, "*", null, "ed253_i_diario in (select ed73_i_diario from diarioresultado where ed73_i_codigo = {$oAvaliacaoAproveitamento->getCodigo()})"));
+
+    $oDaoDiarioResultadoReprovado = db_utils::getDao("diarioresultadoreprovado");
+    $oDaoProcResultadoRecuperacao = db_utils::getDao("procresultadominimorecuperacao");
+    $sSqlProcResultadoRecuperacao = $oDaoProcResultadoRecuperacao->sql_query(null, null, null, "procresultado = {$oAvaliacaoAproveitamento->getElementoAvaliacao()->getCodigo()}");
+    $rsProcResultadoRecuperacao   = $oDaoProcResultadoRecuperacao->sql_record($sSqlProcResultadoRecuperacao);
+    $nMinimoParaRecuperacao       = !empty(db_utils::fieldsMemory($rsProcResultadoRecuperacao, 0)->minimorecuperacao) ? db_utils::fieldsMemory($rsProcResultadoRecuperacao, 0)->minimorecuperacao : 0;
+
+    //Se não tiver sido configurado no procedimento de resultado
+    if($nMinimoParaRecuperacao == 0) {
+      $oDaoFormaAvaliacaoRecuperacao = db_utils::getDao("formaavaliacaominimorecuperacao");
+      $sSqlFormaAvaliacaoRecuperacao = $oDaoFormaAvaliacaoRecuperacao->sql_query(null, null, null, "formaavaliacao = {$oElementoAvaliacao->getFormaDeAvaliacao()->getCodigo()}");
+      $rsFormaAvaliacaoRecuperacao   = $oDaoFormaAvaliacaoRecuperacao->sql_record($sSqlFormaAvaliacaoRecuperacao);
+      $nMinimoParaRecuperacao       = !empty(db_utils::fieldsMemory($rsFormaAvaliacaoRecuperacao, 0)->minimorecuperacao) ? db_utils::fieldsMemory($rsFormaAvaliacaoRecuperacao, 0)->minimorecuperacao : 0;
+    }
+    //Caso tenha algum valor mínimo para recuperação configurado, verificamos se a nota final do aluno é menor e se não foi aprovado pelo conselho
+    if((!empty($nValorAproveitamento) || $nValorAproveitamento === 0.0) && $nMinimoParaRecuperacao > 0 && $oDaoAprovacaoConselho->numrows == 0) {
+      //Se a nota for menor, não tem direito a recuperação
+      if ($nValorAproveitamento < $nMinimoParaRecuperacao) {
+        $lTemDireitoRecuperacao = false;
+        $oAvaliacaoAproveitamento->setEmRecuperacao(false);
+        $sResultadoAprovacao  = "R";
+        $sResultadoFinal      = "R";
+        $rsDiarioResultadoReprovado = $oDaoDiarioResultadoReprovado->sql_record($oDaoDiarioResultadoReprovado->sql_query(null, null, null, "diarioresultado = {$oAvaliacaoAproveitamento->getCodigo()}"));
+
+        if($oDaoDiarioResultadoReprovado->numrows == 0) {
+
+          $oDaoDiarioResultadoReprovado->diarioresultado = $oAvaliacaoAproveitamento->getCodigo();
+          $oDaoDiarioResultadoReprovado->incluir(null);
+        }
+      }
+    }
+
+    //Busca todas as reprovações por não alcançar a nota mínima
+    $rsDiarioResultadoReprovado = $oDaoDiarioResultadoReprovado->getResultadoReprovacaoPorAluno($this->oDiario->getMatricula()->getAluno()->getCodigoAluno());
+    $aDiarioResultadoReprovado  = db_utils::getCollectionByRecord($rsDiarioResultadoReprovado);
+
+    if(count($aDiarioResultadoReprovado) > 0 && (!empty($nValorAproveitamento) || $nValorAproveitamento === 0.0)) {
+      $oResultadoAvaliacao = $oAvaliacaoAproveitamento->getElementoAvaliacao();
+      
+      foreach ($aDiarioResultadoReprovado as $oDiarioReprovado) {
+        if($oAvaliacaoAproveitamento->getCodigo() == $oDiarioReprovado->diarioresultado) {
+          $lDiarioReprovado = true;
+        }
+      }
+      //Se o aluno já reprovou na disciplina por não atingir a nota mínima para recuperação e a nota foi alterada para maior
+      if($lDiarioReprovado && $nValorAproveitamento >= $nMinimoParaRecuperacao && $oDaoAprovacaoConselho->numrows == 0) {
+        //Se a nota foi alterada para uma nota menor que a mínima para aprovação - REC
+        if($nValorAproveitamento < $oResultadoAvaliacao->getAproveitamentoMinimo()) {
+          $lTemDireitoRecuperacao = true;
+          $oAvaliacaoAproveitamento->setEmRecuperacao(true);
+        }
+        //Se a nota foi alterada para uma nota maior que a mínima para aprovação - APR
+        if($nValorAproveitamento >= $oResultadoAvaliacao->getAproveitamentoMinimo()) {
+          $lTemDireitoRecuperacao = true;
+        }
+
+        $oDaoDiarioResultadoReprovado->excluir(null, "diarioresultado = {$oAvaliacaoAproveitamento->getCodigo()}");
+      //Se existe uma reprovação por não atingir a nota mínima em outra matéria
+      } else if (!$lDiarioReprovado) {
+        //Se a nota for menor que o mínimo para aprovação (normalmente seria recuperação, mas como já houve uma reprovação, já reprova direto)
+        if($nValorAproveitamento < $oResultadoAvaliacao->getAproveitamentoMinimo()) {
+          $sResultadoAprovacao  = "R";
+          $sResultadoFinal      = "R";
+          $lTemDireitoRecuperacao = false;
+          $oAvaliacaoAproveitamento->setEmRecuperacao(false);
+        }
+      }
+    }    
+
+	$1]]>
+      </add>
+    </operation>
+  </file>
+
+  <file path='model/educacao/avaliacao/DiarioClasse.model.php'>
+    <operation>
+      <search regex="true"><![CDATA[(foreach.*\$oDisciplina.*\{\s*\n*\$oDisciplina.*salvar\(\);\s*\n*.*\})]]></search>
+      <add>
+        <![CDATA[    /**
+     * Repetição do loop para que todas as disciplinas verifiquem se houve uma reprovação por não atingir a nota mínima
+     * Ex.: Caso não repetisse o loop e houvesse uma reprovação por não atingir a nota mínima, as disciplinas com os resultados 
+     *      já fechados não seriam alteradas, dessa forma, as que estivessem em recuperação, continuariam em recuperação.
+     */
+    for($i = 0; $i < 2; $i++){     
+      foreach ($this->getDisciplinas() as $oDisciplina) {
+        $oDisciplina->salvar();
+      }]]>
+      </add>
+    </operation>
+  </file>
+
+</modification>

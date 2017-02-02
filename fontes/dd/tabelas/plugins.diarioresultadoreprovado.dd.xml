@@ -1,0 +1,41 @@
+<?xml version="1.0" standalone="yes" ?>
+<table name="plugins.diarioresultadoreprovado" description="Guarda as disciplinas que alunos reprovaram por não atingir o mínimo." prefix="" label="Diário de Resultado Reprovado." type="0">
+  <fields>
+    <field name="sequencial"
+           conteudo="int4"
+           description="Sequencial"
+           inivalue="0"
+           label="Sequencial"
+           size="10"
+           null="f"
+           uppercase="f"
+           autocompl="f"
+           aceitatipo="1"
+           tipoobj="text"
+           labelrel="Sequencial"
+           reference=""
+           ispk="t"
+           hassequence="t">
+      <sequence name="plugins.diarioresultadoreprovado_sequencial_seq" ></sequence>
+    </field>
+    <field name="diarioresultado"
+           conteudo="int4"
+           description="Diário de resultado, se liga com a tabela diarioresultado pelo ed73_i_codigo"
+           inivalue="0"
+           label="Diário de resultado"
+           size="10"
+           null="f"
+           uppercase="f"
+           autocompl="f"
+           aceitatipo="1"
+           tipoobj="text"
+           labelrel="Diário de resultado"
+           reference=""
+           ispk="f"
+           hassequence="f">
+    </field>
+  </fields>
+  <primarykey>
+    <fieldpk  name="sequencial"></fieldpk>
+  </primarykey>
+</table>

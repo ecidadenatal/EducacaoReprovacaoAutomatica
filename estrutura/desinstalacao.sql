@@ -1,0 +1,8 @@
+DROP SEQUENCE plugins.formaavaliacaominimorecuperacao_sequencial_seq;
+DROP TABLE plugins.formaavaliacaominimorecuperacao;
+
+DROP SEQUENCE plugins.procresultadominimorecuperacao_sequencial_seq;
+DROP TABLE plugins.procresultadominimorecuperacao;
+
+DROP SEQUENCE plugins.diarioresultadoreprovado_sequencial_seq;
+DROP TABLE plugins.diarioresultadoreprovado;
