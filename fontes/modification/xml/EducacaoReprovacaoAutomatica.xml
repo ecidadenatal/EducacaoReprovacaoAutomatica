@@ -437,11 +437,13 @@ $oDaoProcResultadoRecuperacao = db_utils::getDao("procresultadominimorecuperacao
     <operation>
       <search regex="true"><![CDATA[(\/\*\*\s*.*Excluimos.*a.*informacao.*da.*recuperacao)]]></search>
       <add>
-        <![CDATA[    /**
+        <![CDATA[/**
      * Pegamos o valor mínimo para poder estar em recuperação, caso tenha configurado para o procedimento de avaliação utilizado na turma
      */
     $oDaoAprovacaoConselho        = db_utils::getDao("aprovconselho");
-    $rsAprovacaoConselho          = $oDaoAprovacaoConselho->sql_record($oDaoAprovacaoConselho->sql_query(null, "*", null, "ed253_i_diario in (select ed73_i_diario from diarioresultado where ed73_i_codigo = {$oAvaliacaoAproveitamento->getCodigo()})"));
+    //$rsAprovacaoConselho          = $oDaoAprovacaoConselho->sql_record($oDaoAprovacaoConselho->sql_query(null, "*", null, "ed253_i_diario in (select ed73_i_diario from diarioresultado where ed73_i_codigo = {$oAvaliacaoAproveitamento->getCodigo()})"));
+    $rsAprovacaoConselho          = $oDaoAprovacaoConselho->sql_record($oDaoAprovacaoConselho->sql_query(null, "count(*) as qtd", null, "ed253_i_diario = {$this->getCodigoDiario()}"));
+    $iQuantAprovacaoConselho      = db_utils::fieldsMemory($rsAprovacaoConselho, 0)->qtd;
 
     $oDaoDiarioResultadoReprovado = db_utils::getDao("diarioresultadoreprovado");
     $oDaoProcResultadoRecuperacao = db_utils::getDao("procresultadominimorecuperacao");
@@ -457,7 +459,7 @@ $oDaoProcResultadoRecuperacao = db_utils::getDao("procresultadominimorecuperacao
       $nMinimoParaRecuperacao       = !empty(db_utils::fieldsMemory($rsFormaAvaliacaoRecuperacao, 0)->minimorecuperacao) ? db_utils::fieldsMemory($rsFormaAvaliacaoRecuperacao, 0)->minimorecuperacao : 0;
     }
     //Caso tenha algum valor mínimo para recuperação configurado, verificamos se a nota final do aluno é menor e se não foi aprovado pelo conselho
-    if((!empty($nValorAproveitamento) || $nValorAproveitamento === 0.0) && $nMinimoParaRecuperacao > 0 && $oDaoAprovacaoConselho->numrows == 0) {
+    if((!empty($nValorAproveitamento) || $nValorAproveitamento === 0.0) && $nMinimoParaRecuperacao > 0 && $iQuantAprovacaoConselho == 0) {
       //Se a nota for menor, não tem direito a recuperação
       if ($nValorAproveitamento < $nMinimoParaRecuperacao) {
         $lTemDireitoRecuperacao = false;
@@ -487,7 +489,7 @@ $oDaoProcResultadoRecuperacao = db_utils::getDao("procresultadominimorecuperacao
         }
       }
       //Se o aluno já reprovou na disciplina por não atingir a nota mínima para recuperação e a nota foi alterada para maior
-      if($lDiarioReprovado && $nValorAproveitamento >= $nMinimoParaRecuperacao && $oDaoAprovacaoConselho->numrows == 0) {
+      if($lDiarioReprovado && $nValorAproveitamento >= $nMinimoParaRecuperacao && $iQuantAprovacaoConselho == 0) {
         //Se a nota foi alterada para uma nota menor que a mínima para aprovação - REC
         if($nValorAproveitamento < $oResultadoAvaliacao->getAproveitamentoMinimo()) {
           $lTemDireitoRecuperacao = true;
@@ -528,7 +530,8 @@ $oDaoProcResultadoRecuperacao = db_utils::getDao("procresultadominimorecuperacao
     for($i = 0; $i < 2; $i++){     
       foreach ($this->getDisciplinas() as $oDisciplina) {
         $oDisciplina->salvar();
-      }]]>
+      }
+    }]]>
       </add>
     </operation>
   </file>
